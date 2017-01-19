@@ -3,11 +3,11 @@
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * and Eclipse Distribution License v1.0 which accompany this distribution. 
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
  *
- * The Eclipse Public License is available at 
+ * The Eclipse Public License is available at
  *    http://www.eclipse.org/legal/epl-v10.html
- * and the Eclipse Distribution License is available at 
+ * and the Eclipse Distribution License is available at
  *   http://www.eclipse.org/org/documents/edl-v10.php.
  *
  * Contributors:
@@ -102,7 +102,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	private Timer reconnectTimer; // Automatic reconnect timer
 	private static int reconnectDelay = 1000;  // Reconnect delay, starts at 1 second
 	private boolean reconnecting = false;
-	
+
 
 
 
@@ -180,7 +180,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	public MqttAsyncClient(String serverURI, String clientId) throws MqttException {
 		this(serverURI,clientId, new MqttDefaultFilePersistence());
 	}
-	
+
 	public MqttAsyncClient(String serverURI, String clientId, MqttClientPersistence persistence) throws MqttException {
 		this(serverURI,clientId, persistence, new TimerPingSender());
 	}
@@ -307,8 +307,8 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		this.topics = new Hashtable();
 
 	}
-	
-	
+
+
 
 	/**
 	 * @param ch
@@ -450,7 +450,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 				throw ExceptionHelper.createMqttException(MqttException.REASON_CODE_SOCKET_FACTORY_MISMATCH);
 			}
 
-			// Create the network module...	
+			// Create the network module...
 			netModule = new WebSocketSecureNetworkModule((SSLSocketFactory) factory, address, host, port, clientId);
 			((WebSocketSecureNetworkModule)netModule).setSSLhandshakeTimeout(options.getConnectionTimeout());
 			// Ciphers suites need to be set, if they are available
@@ -555,27 +555,10 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 				userContext,
 				callback });
 		comms.setNetworkModules(createNetworkModules(serverURI, options));
-		comms.setReconnectCallback(new MqttCallbackExtended() {
-			
-			public void messageArrived(String topic, MqttMessage message) throws Exception {
-			}
-			public void deliveryComplete(IMqttDeliveryToken token) {
-			}
-			public void connectComplete(boolean reconnect, String serverURI) {
-			}
+		comms.setReconnectCallback(new MqttAsyncClientReconnector(this, automaticReconnect));
 
-			public void connectionLost(Throwable cause) {
-				if(automaticReconnect){
-						// Automatic reconnect is set so make sure comms is in resting state
-						comms.setRestingState(true);
-						reconnecting = true;
-						startReconnectCycle();
-					}
-			}
-		});
-		
-		
-		
+
+
 
 		// Insert our own callback to iterate through the URIs till the connect succeeds
 		MqttToken userToken = new MqttToken(getClientId());
@@ -592,6 +575,10 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		connectActionListener.connect();
 
 		return userToken;
+	}
+
+	protected void setReconnecting() {
+		reconnecting = true;
 	}
 
 	/* (non-Javadoc)
@@ -640,7 +627,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 
 		return token;
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * @see org.eclipse.paho.client.mqttv3.IMqttAsyncClient#disconnectForcibly()
@@ -656,7 +643,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	public void disconnectForcibly(long disconnectTimeout) throws MqttException {
 		disconnectForcibly(QUIESCE_TIMEOUT, disconnectTimeout);
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * @see org.eclipse.paho.client.mqttv3.IMqttAsyncClient#disconnectForcibly(long, long)
@@ -685,16 +672,16 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	public String getServerURI() {
 		return serverURI;
 	}
-	
+
 	/**
 	 * Returns the currently connected Server URI
 	 * Implemented due to: https://bugs.eclipse.org/bugs/show_bug.cgi?id=481097
-	 * 
+	 *
 	 * Where getServerURI only returns the URI that was provided in
 	 * MqttAsyncClient's constructor, getCurrentServerURI returns the URI of the
 	 * Server that the client is currently connected to. This would be different in scenarios
 	 * where multiple server URIs have been provided to the MqttConnectOptions.
-	 * 
+	 *
 	 * @return the currently connected server URI
 	 */
 	public String getCurrentServerURI(){
@@ -753,14 +740,14 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		}
 		return result;
 	}
-	
+
 	/* (non-Javadoc)
 	 * Check and send a ping if needed.
-	 * <p>By default, client sends PingReq to server to keep the connection to 
+	 * <p>By default, client sends PingReq to server to keep the connection to
 	 * server. For some platforms which cannot use this mechanism, such as Android,
 	 * developer needs to handle the ping request manually with this method.
 	 * </p>
-	 * 
+	 *
 	 * @throws MqttException for other errors encountered while publishing the message.
 	 */
 	public IMqttToken checkPing(Object userContext, IMqttActionListener callback) throws MqttException{
@@ -768,14 +755,14 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		MqttToken token;
 		//@TRACE 117=>
 		log.fine(CLASS_NAME,methodName,"117");
-		
+
 		token = comms.checkForActivity();
 		//@TRACE 118=<
 		log.fine(CLASS_NAME,methodName,"118");
-		
+
 		return token;
 	}
-		
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.paho.client.mqttv3.IMqttAsyncClient#subscribe(java.lang.String, int, java.lang.Object, org.eclipse.paho.client.mqttv3.IMqttActionListener)
 	 */
@@ -796,7 +783,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	public IMqttToken subscribe(String[] topicFilters, int[] qos) throws MqttException {
 		return this.subscribe(topicFilters, qos, null, null);
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.paho.client.mqttv3.IMqttAsyncClient#subscribe(java.lang.String[], int[], java.lang.Object, org.eclipse.paho.client.mqttv3.IMqttActionListener)
 	 */
@@ -806,19 +793,19 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		if (topicFilters.length != qos.length) {
 			throw new IllegalArgumentException();
 		}
-		
-		// remove any message handlers for individual topics 
+
+		// remove any message handlers for individual topics
 		for (int i = 0; i < topicFilters.length; ++i) {
 			this.comms.removeMessageListener(topicFilters[i]);
 		}
-		
+
 		String subs = "";
 		for (int i=0;i<topicFilters.length;i++) {
 			if (i>0) {
 				subs+=", ";
 			}
 			subs+= "topic="+ topicFilters[i]+" qos="+qos[i];
-			
+
 			//Check if the topic filter is valid before subscribing
 			MqttTopic.validate(topicFilters[i], true/*allow wildcards*/);
 		}
@@ -838,12 +825,12 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 
 		return token;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.paho.client.mqttv3.IMqttAsyncClient#subscribe(java.lang.String, int, java.lang.Object, org.eclipse.paho.client.mqttv3.IMqttActionListener)
 	 */
 	public IMqttToken subscribe(String topicFilter, int qos, Object userContext, IMqttActionListener callback, IMqttMessageListener messageListener) throws MqttException {
-		
+
 		return this.subscribe(new String[] {topicFilter}, new int[] {qos}, userContext, callback, new IMqttMessageListener[] {messageListener});
 	}
 
@@ -860,20 +847,20 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	public IMqttToken subscribe(String[] topicFilters, int[] qos, IMqttMessageListener[] messageListeners) throws MqttException {
 		return this.subscribe(topicFilters, qos, null, null, messageListeners);
 	}
-	
+
 	public IMqttToken subscribe(String[] topicFilters, int[] qos, Object userContext, IMqttActionListener callback, IMqttMessageListener[] messageListeners) throws MqttException {
-		
+
 		if ((messageListeners.length != qos.length) || (qos.length != topicFilters.length)) {
 			throw new IllegalArgumentException();
 		}
-		
+
 		IMqttToken token = this.subscribe(topicFilters, qos, userContext, callback);
-		
+
 		// add message handlers to the list for this client
 		for (int i = 0; i < topicFilters.length; ++i) {
 			this.comms.setMessageListener(topicFilters[i], messageListeners[i]);
 		}
-		
+
 		return token;
 	}
 
@@ -909,17 +896,17 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 				subs+=", ";
 			}
 			subs+=topicFilters[i];
-			
+
 			// Check if the topic filter is valid before unsubscribing
 			// Although we already checked when subscribing, but invalid
 			// topic filter is meanless for unsubscribing, just prohibit it
 			// to reduce unnecessary control packet send to broker.
 			MqttTopic.validate(topicFilters[i], true/*allow wildcards*/);
 		}
-		
+
 		//@TRACE 107=Unsubscribe topic={0} userContext={1} callback={2}
 		log.fine(CLASS_NAME, methodName,"107",new Object[]{subs, userContext, callback});
-		
+
 		// remove message handlers from the list for this client
 		for (int i = 0; i < topicFilters.length; ++i) {
 			this.comms.removeMessageListener(topicFilters[i]);
@@ -946,14 +933,14 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		this.mqttCallback = callback;
 		comms.setCallback(callback);
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see IMqttAsyncClient#setManualAcks(manualAcks)
 	 */
 	public void setManualAcks(boolean manualAcks) {
 		comms.setManualAcks(manualAcks);
 	}
-	
+
 	public void messageArrivedComplete(int messageId, int qos) throws MqttException {
 		comms.messageArrivedComplete(messageId, qos);
 	}
@@ -968,7 +955,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	 * @see MqttConnectOptions#setCleanSession(boolean)
 	 */
 	public static String generateClientId() {
-		//length of nanoTime = 15, so total length = 19  < 65535(defined in spec) 
+		//length of nanoTime = 15, so total length = 19  < 65535(defined in spec)
 		return CLIENT_ID_PREFIX + System.nanoTime();
 	}
 
@@ -1058,32 +1045,32 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 
 		attemptReconnect();
 	}
-	
-	
+
+
 	/**
 	 * Attempts to reconnect the client to the server.
 	 * If successful it will make sure that there are no further
 	 * reconnects scheduled. However if the connect fails, the delay will double
 	 * up to 128 seconds and will re-schedule the reconnect for after the delay.
-	 * 
-	 * Any thrown exceptions are logged but not acted upon as it is assumed that 
+	 *
+	 * Any thrown exceptions are logged but not acted upon as it is assumed that
 	 * they are being thrown due to the server being offline and so reconnect
 	 * attempts will continue.
 	 */
 	private void attemptReconnect(){
-		final String methodName = "attemptReconnect";	
+		final String methodName = "attemptReconnect";
 		//@Trace 500=Attempting to reconnect client: {0}
 		log.fine(CLASS_NAME, methodName, "500", new Object[]{this.clientId});
 		try {
 			connect(this.connOpts, this.userContext,new IMqttActionListener() {
-				
+
 				public void onSuccess(IMqttToken asyncActionToken) {
 					//@Trace 501=Automatic Reconnect Successful: {0}
 					log.fine(CLASS_NAME, methodName, "501", new Object[]{asyncActionToken.getClient().getClientId()});
 					comms.setRestingState(false);
 					stopReconnectCycle();
 				}
-				
+
 				public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
 					//@Trace 502=Automatic Reconnect failed, rescheduling: {0}
 					log.fine(CLASS_NAME, methodName, "502", new Object[]{asyncActionToken.getClient().getClientId()});
@@ -1102,26 +1089,26 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		}
 	}
 
-	
-	
-	
-	private void startReconnectCycle(){
+
+
+
+	protected void startReconnectCycle(){
 		String methodName = "startReconnectCycle";
 		//@Trace 503=Start reconnect timer for client: {0}, delay: {1}
 		log.fine(CLASS_NAME, methodName, "503", new Object[]{this.clientId, new Long(reconnectDelay)});
 		reconnectTimer = new Timer("MQTT Reconnect: " + clientId);
 		reconnectTimer.schedule(new ReconnectTask(), reconnectDelay);
 	}
-	
+
 	private void stopReconnectCycle(){
 		String methodName = "stopReconnectCycle";
 		//@Trace 504=Stop reconnect timer for client: {0}
 		log.fine(CLASS_NAME, methodName, "504", new Object[]{this.clientId});
 		reconnectTimer.cancel();
 		reconnectDelay = 1000; // Reset Delay Timer
-		
+
 	}
-	
+
 	private void rescheduleReconnectCycle(int delay){
 		String methodName = "rescheduleReconnectCycle";
 		//@Trace 505=Rescheduling reconnect timer for client: {0}, delay: {1}
@@ -1129,7 +1116,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		reconnectTimer.schedule(new ReconnectTask(), reconnectDelay);
 
 	}
-	
+
 	private class ReconnectTask extends TimerTask {
 		private static final String methodName = "ReconnectTask.run";
 		public void run() {
@@ -1138,7 +1125,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 			attemptReconnect();
 		}
 	}
-	
+
 	/**
 	 * Sets the DisconnectedBufferOptions for this client
 	 * @param bufferOpts
@@ -1146,19 +1133,19 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	public void setBufferOpts(DisconnectedBufferOptions bufferOpts) {
 		this.comms.setDisconnectedMessageBuffer(new DisconnectedMessageBuffer(bufferOpts));
 	}
-	
+
 	public int getBufferedMessageCount(){
 		return this.comms.getBufferedMessageCount();
 	}
-	
+
 	public MqttMessage getBufferedMessage(int bufferIndex){
 		return this.comms.getBufferedMessage(bufferIndex);
 	}
-	
+
 	public void deleteBufferedMessage(int bufferIndex){
 		this.comms.deleteBufferedMessage(bufferIndex);
 	}
-	
+
 
 
 
