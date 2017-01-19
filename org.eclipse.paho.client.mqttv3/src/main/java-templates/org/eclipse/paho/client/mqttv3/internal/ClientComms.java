@@ -3,11 +3,11 @@
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * and Eclipse Distribution License v1.0 which accompany this distribution. 
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
  *
- * The Eclipse Public License is available at 
+ * The Eclipse Public License is available at
  *    http://www.eclipse.org/legal/epl-v10.html
- * and the Eclipse Distribution License is available at 
+ * and the Eclipse Distribution License is available at
  *   http://www.eclipse.org/org/documents/edl-v10.php.
  *
  * Contributors:
@@ -80,7 +80,7 @@ public class ClientComms {
 	private boolean	closePending = false;
 	private boolean resting = false;
 	private DisconnectedMessageBuffer disconnectedMessageBuffer;
-	
+
 	/**
 	 * Creates a new ClientComms object, using the specified module to handle
 	 * the network calls.
@@ -91,7 +91,7 @@ public class ClientComms {
 		this.persistence = persistence;
 		this.pingSender = pingSender;
 		this.pingSender.init(this);
-		
+
 		this.tokenStore = new CommsTokenStore(getClient().getClientId());
 		this.callback 	= new CommsCallback(this);
 		this.clientState = new ClientState(persistence, tokenStore, this.callback, this, pingSender);
@@ -348,7 +348,7 @@ public class ClientComms {
 		}
 
 		if (sender != null) { sender.stop(); }
-		
+
 		if (pingSender != null){
 			pingSender.stop();
 		}
@@ -357,7 +357,7 @@ public class ClientComms {
 			if(disconnectedMessageBuffer == null && persistence != null){
 				persistence.close();
 			}
-			
+
 		}catch(Exception ex) {
 			// Ignore as we are shutting down
 		}
@@ -467,7 +467,7 @@ public class ClientComms {
 			discbg.start();
 		}
 	}
-	
+
 	/**
 	 * Disconnect the connection and reset all the states.
 	 */
@@ -520,7 +520,7 @@ public class ClientComms {
 			return conState == CLOSED;
 		}
 	}
-	
+
 	public boolean isResting() {
 		synchronized (conLock) {
 			return resting;
@@ -531,23 +531,23 @@ public class ClientComms {
 	public void setCallback(MqttCallback mqttCallback) {
 		this.callback.setCallback(mqttCallback);
 	}
-	
+
 	public void setReconnectCallback(MqttCallbackExtended callback){
 		this.callback.setReconnectCallback(callback);
 	}
-	
+
 	public void setManualAcks(boolean manualAcks) {
 		this.callback.setManualAcks(manualAcks);
 	}
-	
+
 	public void messageArrivedComplete(int messageId, int qos) throws MqttException {
 		this.callback.messageArrivedComplete(messageId, qos);
 	}
-	
+
 	public void setMessageListener(String topicFilter, IMqttMessageListener messageListener) {
 		this.callback.setMessageListener(topicFilter, messageListener);
 	}
-	
+
 	public void removeMessageListener(String topicFilter) {
 		this.callback.removeMessageListener(topicFilter);
 	}
@@ -570,11 +570,11 @@ public class ClientComms {
 	public MqttDeliveryToken[] getPendingDeliveryTokens() {
 		return tokenStore.getOutstandingDelTokens();
 	}
-	
+
 	protected void deliveryComplete(MqttPublish msg) throws MqttPersistenceException {
 		this.clientState.deliveryComplete(msg);
 	}
-	
+
 	protected void deliveryComplete(int messageId) throws MqttPersistenceException {
 		this.clientState.deliveryComplete(messageId);
 	}
@@ -652,7 +652,7 @@ public class ClientComms {
 				receiver.start("MQTT Rec: "+getClient().getClientId());
 				sender = new CommsSender(clientComms, clientState, tokenStore, networkModule.getOutputStream());
 				sender.start("MQTT Snd: "+getClient().getClientId());
-				callback.start("MQTT Call: "+getClient().getClientId());				
+				callback.start("MQTT Call: "+getClient().getClientId());
 				internalSend(conPacket, conToken);
 			} catch (MqttException ex) {
 				//@TRACE 212=connect failed: unexpected exception
@@ -688,7 +688,7 @@ public class ClientComms {
 			dBg = new Thread(this, "MQTT Disc: "+getClient().getClientId());
 			dBg.start();
 		}
-		
+
 		public void run() {
 			final String methodName = "disconnectBG:run";
 			//@TRACE 221=>
@@ -708,23 +708,23 @@ public class ClientComms {
 			}
 		}
 	}
-	
+
 	/*
 	 * Check and send a ping if needed and check for ping timeout.
-	 * Need to send a ping if nothing has been sent or received 
+	 * Need to send a ping if nothing has been sent or received
 	 * in the last keepalive interval.
 	 */
 	public MqttToken checkForActivity(){
 		return this.checkForActivity(null);
 	}
-	
+
 	/*
 	 * Check and send a ping if needed and check for ping timeout.
-	 * Need to send a ping if nothing has been sent or received 
+	 * Need to send a ping if nothing has been sent or received
 	 * in the last keepalive interval.
 	 * Passes an IMqttActionListener to ClientState.checkForActivity
 	 * so that the callbacks are attached as soon as the token is created
-	 * (Bug 473928) 
+	 * (Bug 473928)
 	 */
 	public MqttToken checkForActivity(IMqttActionListener pingCallback){
 		MqttToken token = null;
@@ -736,8 +736,8 @@ public class ClientComms {
 			handleRunException(e);
 		}
 		return token;
-	}	
-	
+	}
+
 	private void handleRunException(Exception ex) {
 		final String methodName = "handleRunException";
 		//@TRACE 804=exception
@@ -764,52 +764,32 @@ public class ClientComms {
 	public void setDisconnectedMessageBuffer(DisconnectedMessageBuffer disconnectedMessageBuffer) {
 		this.disconnectedMessageBuffer = disconnectedMessageBuffer;
 	}
-	
+
 	public int getBufferedMessageCount(){
 		return this.disconnectedMessageBuffer.getMessageCount();
 	}
-	
+
 	public MqttMessage getBufferedMessage(int bufferIndex){
 		MqttPublish send = (MqttPublish) this.disconnectedMessageBuffer.getMessage(bufferIndex).getMessage();
 		return send.getMessage();
 	}
-	
+
 	public void deleteBufferedMessage(int bufferIndex){
 		this.disconnectedMessageBuffer.deleteMessage(bufferIndex);
 	}
-	
+
 
 	/**
 	 * When the client automatically reconnects, we want to send all messages from the
 	 * buffer first before allowing the user to send any messages
-	 * @throws MqttException 
+	 * @throws MqttException
 	 */
 	public void notifyReconnect() {
 		final String methodName = "notifyReconnect";
 		if(disconnectedMessageBuffer != null){
 			//@TRACE 509=Client Reconnected, Offline Buffer Available. Sending Buffered Messages.
 			log.fine(CLASS_NAME, methodName, "509");
-			disconnectedMessageBuffer.setPublishCallback(new IDisconnectedBufferCallback() {
-				
-				public void publishBufferedMessage(BufferedMessage bufferedMessage) throws MqttException {
-					if (isConnected()) {
-						while(clientState.getActualInFlight() >= (clientState.getMaxInFlight()-1)){
-							// We need to Yield to the other threads to allow the in flight messages to clear
-							Thread.yield();
-							
-						}
-						//@TRACE 510=Publising Buffered message message={0}
-						log.fine(CLASS_NAME, methodName, "510", new Object[] {bufferedMessage.getMessage().getKey()});
-						internalSend(bufferedMessage.getMessage(), bufferedMessage.getToken());
-						// Delete from persistence if in there
-						clientState.unPersistBufferedMessage(bufferedMessage.getMessage());
-					} else {
-						//@TRACE 208=failed: not connected
-						log.fine(CLASS_NAME, methodName, "208");
-						throw ExceptionHelper.createMqttException(MqttException.REASON_CODE_CLIENT_NOT_CONNECTED);
-					}	
-				}
-			});
+			disconnectedMessageBuffer.setPublishCallback(new ClientCommsPublishCallback(this, clientState));
 			new Thread(disconnectedMessageBuffer).start();
 		}
 	}
