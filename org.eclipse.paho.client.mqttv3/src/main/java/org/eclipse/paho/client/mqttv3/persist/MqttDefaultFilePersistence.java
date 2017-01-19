@@ -3,11 +3,11 @@
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * and Eclipse Distribution License v1.0 which accompany this distribution. 
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
  *
- * The Eclipse Public License is available at 
+ * The Eclipse Public License is available at
  *    http://www.eclipse.org/legal/epl-v10.html
- * and the Eclipse Distribution License is available at 
+ * and the Eclipse Distribution License is available at
  *   http://www.eclipse.org/org/documents/edl-v10.php.
  *
  * Contributors:
@@ -33,32 +33,38 @@ import org.eclipse.paho.client.mqttv3.internal.MqttPersistentData;
 /**
  * An implementation of the {@link MqttClientPersistence} interface that provides
  * file based persistence.
- * 
+ *
  * A directory is specified when the Persistence object is created. When the persistence
  * is then opened (see {@link #open(String, String)}), a sub-directory is made beneath the base
  * for this client ID and connection key. This allows one persistence base directory
  * to be shared by multiple clients.
- * 
+ *
  * The sub-directory's name is created from a concatenation of the client ID and connection key
  * with any instance of '/', '\\', ':' or ' ' removed.
  */
 public class MqttDefaultFilePersistence implements MqttClientPersistence {
 	private static final String MESSAGE_FILE_EXTENSION = ".msg";
 	private static final String MESSAGE_BACKUP_FILE_EXTENSION = ".bup";
-	private static final String LOCK_FILENAME = ".lck"; 
+	private static final String LOCK_FILENAME = ".lck";
 
 	private File dataDir;
 	private File clientDir = null;
 	private FileLock fileLock = null;
-	
-	private static final FilenameFilter FILE_FILTER = new FilenameFilter() { 
-		public boolean accept(File dir, String name) { return name.endsWith(MESSAGE_FILE_EXTENSION); }
-		};
-	
+
+	//TODO
+ 	private static FilenameFilter FILENAME_FILTER;
+
+	private static FilenameFilter getFilenameFilter(){
+		if(FILENAME_FILTER == null){
+			FILENAME_FILTER =  new PersistanceFileNameFilter(MESSAGE_FILE_EXTENSION);
+		}
+		return FILENAME_FILTER;
+	}
+
 	public MqttDefaultFilePersistence()  { //throws MqttPersistenceException {
 		this(System.getProperty("user.dir"));
 	}
-	
+
 	/**
 	 * Create an file-based persistent data store within the specified directory.
 	 * @param directory the directory to use.
@@ -66,21 +72,21 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 	public MqttDefaultFilePersistence(String directory) { //throws MqttPersistenceException {
 		dataDir = new File(directory);
 	}
-	
+
 	public void open(String clientId, String theConnection) throws MqttPersistenceException {
-		
+
 		if (dataDir.exists() && !dataDir.isDirectory()) {
 			throw new MqttPersistenceException();
 		} else if (!dataDir.exists() ) {
 			if (!dataDir.mkdirs()) {
 				throw new MqttPersistenceException();
 			}
-		} 
+		}
 		if (!dataDir.canWrite()) {
 			throw new MqttPersistenceException();
 		}
-		
-		
+
+
 		StringBuffer keyBuffer = new StringBuffer();
 		for (int i=0;i<clientId.length();i++) {
 			char c = clientId.charAt(i);
@@ -132,7 +138,7 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 	}
 
 	public void close() throws MqttPersistenceException {
-		
+
 		synchronized (this) {
 			// checkIsOpen();
 			if (fileLock != null) {
@@ -156,9 +162,9 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 		checkIsOpen();
 		File file = new File(clientDir, key+MESSAGE_FILE_EXTENSION);
 		File backupFile = new File(clientDir, key+MESSAGE_FILE_EXTENSION+MESSAGE_BACKUP_FILE_EXTENSION);
-		
+
 		if (file.exists()) {
-			// Backup the existing file so the overwrite can be rolled-back 
+			// Backup the existing file so the overwrite can be rolled-back
 			boolean result = file.renameTo(backupFile);
 			if (!result) {
 				backupFile.delete();
@@ -174,13 +180,13 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 			fos.getFD().sync();
 			fos.close();
 			if (backupFile.exists()) {
-				// The write has completed successfully, delete the backup 
+				// The write has completed successfully, delete the backup
 				backupFile.delete();
 			}
 		}
 		catch (IOException ex) {
 			throw new MqttPersistenceException(ex);
-		} 
+		}
 		finally {
 			if (backupFile.exists()) {
 				// The write has failed - restore the backup
@@ -207,7 +213,7 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 			}
 			fis.close();
 			result = new MqttPersistentData(key, data, 0, data.length, null, 0, 0);
-		} 
+		}
 		catch(IOException ex) {
 			throw new MqttPersistenceException(ex);
 		}
@@ -225,7 +231,7 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 			file.delete();
 		}
 	}
-	
+
 	/**
 	 * Returns all of the persistent data from the previously specified persistence directory.
 	 * @return all of the persistent data from the persistence directory.
@@ -242,20 +248,20 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 		}
 		return result.elements();
 	}
-	
+
 	private File[] getFiles() throws MqttPersistenceException {
 		checkIsOpen();
-		File[] files = clientDir.listFiles(FILE_FILTER);
+		File[] files = clientDir.listFiles(getFilenameFilter());
 		if (files == null) {
 			throw new MqttPersistenceException();
 		}
 		return files;
 	}
-	
+
 	private boolean isSafeChar(char c) {
 		return Character.isJavaIdentifierPart(c) || c=='-';
 	}
-	
+
 	/**
 	 * Identifies any backup files in the specified directory and restores them
 	 * to their original file. This will overwrite any existing file of the same
@@ -264,11 +270,8 @@ public class MqttDefaultFilePersistence implements MqttClientPersistence {
 	 * @param dir The directory in which to scan and restore backups
 	 */
 	private void restoreBackups(File dir) throws MqttPersistenceException {
-		File[] files = dir.listFiles(new FileFilter() {
-			public boolean accept(File f) {
-				return f.getName().endsWith(MESSAGE_BACKUP_FILE_EXTENSION);
-			}
-		});
+		File[] files = dir.listFiles(new PersistanceFileFilter(MESSAGE_BACKUP_FILE_EXTENSION));
+
 		if (files == null) {
 			throw new MqttPersistenceException();
 		}
