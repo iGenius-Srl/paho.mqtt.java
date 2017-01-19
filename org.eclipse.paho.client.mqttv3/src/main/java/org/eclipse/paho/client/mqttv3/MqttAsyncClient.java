@@ -100,7 +100,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 	private MqttConnectOptions connOpts;
 	private Object userContext;
 	private Timer reconnectTimer; // Automatic reconnect timer
-	private static int reconnectDelay = 1000;  // Reconnect delay, starts at 1 second
+	protected static int reconnectDelay = 1000;  // Reconnect delay, starts at 1 second
 	private boolean reconnecting = false;
 
 
@@ -1062,24 +1062,9 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		//@Trace 500=Attempting to reconnect client: {0}
 		log.fine(CLASS_NAME, methodName, "500", new Object[]{this.clientId});
 		try {
-			connect(this.connOpts, this.userContext,new IMqttActionListener() {
+			connect(this.connOpts, this.userContext,
+					new MqttAsyncClientReconnectionListener(this));
 
-				public void onSuccess(IMqttToken asyncActionToken) {
-					//@Trace 501=Automatic Reconnect Successful: {0}
-					log.fine(CLASS_NAME, methodName, "501", new Object[]{asyncActionToken.getClient().getClientId()});
-					comms.setRestingState(false);
-					stopReconnectCycle();
-				}
-
-				public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-					//@Trace 502=Automatic Reconnect failed, rescheduling: {0}
-					log.fine(CLASS_NAME, methodName, "502", new Object[]{asyncActionToken.getClient().getClientId()});
-					if(reconnectDelay < 128000){
-						reconnectDelay = reconnectDelay * 2;
-					}
-					rescheduleReconnectCycle(reconnectDelay);
-				}
-			});
 		} catch (MqttSecurityException ex) {
 			//@TRACE 804=exception
 			log.fine(CLASS_NAME,methodName,"804",null, ex);
@@ -1100,7 +1085,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 		reconnectTimer.schedule(new ReconnectTask(), reconnectDelay);
 	}
 
-	private void stopReconnectCycle(){
+	protected void stopReconnectCycle(){
 		String methodName = "stopReconnectCycle";
 		//@Trace 504=Stop reconnect timer for client: {0}
 		log.fine(CLASS_NAME, methodName, "504", new Object[]{this.clientId});
@@ -1109,7 +1094,7 @@ public class MqttAsyncClient implements IMqttAsyncClient { // DestinationProvide
 
 	}
 
-	private void rescheduleReconnectCycle(int delay){
+	protected void rescheduleReconnectCycle(int delay){
 		String methodName = "rescheduleReconnectCycle";
 		//@Trace 505=Rescheduling reconnect timer for client: {0}, delay: {1}
 		log.fine(CLASS_NAME, methodName, "505", new Object[]{this.clientId, new Long(reconnectDelay)});
